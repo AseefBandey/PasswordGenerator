@@ -233,8 +233,6 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 **Aseef**
 
-Made with ❤️ by Aseef
-
 ---
 
 ## Acknowledgments
