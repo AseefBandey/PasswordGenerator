@@ -1,510 +1,313 @@
-// DOM Elements
-const passwordOutput = document.getElementById('passwordOutput');
-const lengthSlider = document.getElementById('lengthSlider');
-const lengthValue = document.getElementById('lengthValue');
-const uppercaseCheckbox = document.getElementById('uppercase');
-const lowercaseCheckbox = document.getElementById('lowercase');
-const numbersCheckbox = document.getElementById('numbers');
-const symbolsCheckbox = document.getElementById('symbols');
-const generateBtn = document.getElementById('generateBtn');
-const copyBtn = document.getElementById('copyBtn');
-const strengthFill = document.getElementById('strengthFill');
-const strengthText = document.getElementById('strengthText');
-const themeToggle = document.getElementById('themeToggle');
-const exportJsonBtn = document.getElementById('exportJsonBtn');
-const exportCsvBtn = document.getElementById('exportCsvBtn');
-const modeRadios = document.querySelectorAll('input[name="generationMode"]');
-const passphraseControls = document.getElementById('passphraseControls');
-const passwordOptions = document.getElementById('passwordOptions');
-const wordCountSlider = document.getElementById('wordCountSlider');
-const wordCountValue = document.getElementById('wordCountValue');
-const includeNumbers = document.getElementById('includeNumbers');
-const customCharsetGroup = document.getElementById('customCharsetGroup');
-const customCharset = document.getElementById('customCharset');
-const strengthDetails = document.getElementById('strengthDetails');
-const toggleDetailsBtn = document.getElementById('toggleDetailsBtn');
-const lengthScore = document.getElementById('lengthScore');
-const varietyScore = document.getElementById('varietyScore');
-const entropyScore = document.getElementById('entropyScore');
-const charTypes = document.getElementById('charTypes');
+// script.js
+// ---------
+// Wires the DOM to the pure functions in core.js. No generation or
+// entropy math lives here on purpose - see core.js and tests.js.
 
-// Character sets
-const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-const lowercase = 'abcdefghijklmnopqrstuvwxyz';
-const numbers = '0123456789';
-const symbols = '!@#$%^&*()_+-=[]{}|;:,.<>?';
+(function () {
+  'use strict';
 
-// Common word list for passphrase generation
-const wordList = [
-    'apple', 'banana', 'cherry', 'dolphin', 'elephant', 'forest', 'guitar', 'horizon',
-    'island', 'jungle', 'knight', 'lighthouse', 'mountain', 'nature', 'ocean', 'piano',
-    'quantum', 'rainbow', 'sunset', 'tiger', 'universe', 'volcano', 'waterfall', 'xylophone',
-    'yacht', 'zebra', 'adventure', 'butterfly', 'crystal', 'dragon', 'eclipse', 'firefly',
-    'galaxy', 'harmony', 'infinity', 'journey', 'kingdom', 'legend', 'mystery', 'nebula',
-    'oracle', 'phoenix', 'quest', 'river', 'serenity', 'thunder', 'utopia', 'vortex',
-    'whisper', 'zenith', 'aurora', 'blossom', 'cascade', 'destiny', 'eternity', 'freedom'
-];
+  var $ = function (id) { return document.getElementById(id); };
 
-// Theme management
-function initTheme() {
-    const savedTheme = localStorage.getItem('theme') || 'light';
-    document.documentElement.setAttribute('data-theme', savedTheme);
-}
+  var els = {
+    passwordOutput: $('passwordOutput'),
+    copyBtn: $('copyBtn'),
+    generateBtn: $('generateBtn'),
+    themeToggle: $('themeToggle'),
+    tabs: document.querySelectorAll('.tab'),
+    passwordOptions: $('passwordOptions'),
+    passphraseControls: $('passphraseControls'),
+    lengthSlider: $('lengthSlider'),
+    lengthValue: $('lengthValue'),
+    uppercase: $('uppercase'),
+    lowercase: $('lowercase'),
+    numbers: $('numbers'),
+    symbols: $('symbols'),
+    excludeAmbiguous: $('excludeAmbiguous'),
+    customCharset: $('customCharset'),
+    wordCountSlider: $('wordCountSlider'),
+    wordCountValue: $('wordCountValue'),
+    includeNumbers: $('includeNumbers'),
+    strengthFill: $('strengthFill'),
+    strengthText: $('strengthText'),
+    toggleDetailsBtn: $('toggleDetailsBtn'),
+    strengthDetails: $('strengthDetails'),
+    lengthScore: $('lengthScore'),
+    varietyScore: $('varietyScore'),
+    entropyScore: $('entropyScore'),
+    charTypes: $('charTypes'),
+    exportJsonBtn: $('exportJsonBtn'),
+    exportCsvBtn: $('exportCsvBtn'),
+    historyList: $('historyList'),
+    clearHistoryBtn: $('clearHistoryBtn')
+  };
 
-function toggleTheme() {
-    const currentTheme = document.documentElement.getAttribute('data-theme');
-    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-    document.documentElement.setAttribute('data-theme', newTheme);
-    localStorage.setItem('theme', newTheme);
-}
+  var state = {
+    mode: 'password',
+    lastValue: '',
+    lastMeta: null,
+    // Deliberately in-memory only. Persisting generated passwords to
+    // localStorage would mean a secret sitting in plaintext on disk
+    // long after the tab is closed - not a trade-off a password tool
+    // should make quietly.
+    history: []
+  };
 
-initTheme();
-themeToggle.addEventListener('click', toggleTheme);
+  // ---------- theme ----------
+  function initTheme() {
+    var saved = localStorage.getItem('theme') || 'light';
+    document.documentElement.setAttribute('data-theme', saved);
+    els.themeToggle.setAttribute('aria-pressed', String(saved === 'dark'));
+  }
+  function toggleTheme() {
+    var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    var next = isDark ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('theme', next);
+    els.themeToggle.setAttribute('aria-pressed', String(next === 'dark'));
+    els.themeToggle.setAttribute('aria-label', next === 'dark' ? 'Switch to light theme' : 'Switch to dark theme');
+  }
+  initTheme();
+  els.themeToggle.addEventListener('click', toggleTheme);
 
-// Calculate strength based on current settings
-function calculateStrengthFromSettings() {
-    const length = parseInt(lengthSlider.value);
-    let strength = 0;
-    let lengthScore = 0;
-    
-    // Length factor
-    if (length >= 16) {
-        strength += 3;
-        lengthScore = 3;
-    } else if (length >= 12) {
-        strength += 2;
-        lengthScore = 2;
-    } else if (length >= 8) {
-        strength += 1;
-        lengthScore = 1;
-    } else if (length >= 6) {
-        strength += 0.5;
-        lengthScore = 0.5;
-    }
-    
-    // Character variety factor
-    let varietyCount = 0;
-    if (uppercaseCheckbox.checked) varietyCount++;
-    if (lowercaseCheckbox.checked) varietyCount++;
-    if (numbersCheckbox.checked) varietyCount++;
-    if (symbolsCheckbox.checked) varietyCount++;
-    
-    strength += varietyCount;
-    
-    // Return as object for consistency
+  // ---------- mode tabs ----------
+  function setMode(mode) {
+    state.mode = mode;
+    els.tabs.forEach(function (tab) {
+      var active = tab.dataset.mode === mode;
+      tab.classList.toggle('active', active);
+      tab.setAttribute('aria-selected', String(active));
+    });
+    els.passwordOptions.hidden = mode !== 'password';
+    els.passphraseControls.hidden = mode !== 'passphrase';
+    generate();
+  }
+  els.tabs.forEach(function (tab) {
+    tab.addEventListener('click', function () { setMode(tab.dataset.mode); });
+  });
+
+  // ---------- option readers ----------
+  function readPasswordOptions() {
     return {
-        strength: Math.min(strength, 7),
-        lengthScore: lengthScore.toFixed(1),
-        varietyScore: varietyCount + '/4',
-        entropy: '0.00 bits',
-        charTypes: varietyCount > 0 ? 'Estimated' : 'None'
+      length: parseInt(els.lengthSlider.value, 10),
+      upper: els.uppercase.checked,
+      lower: els.lowercase.checked,
+      digits: els.numbers.checked,
+      symbols: els.symbols.checked,
+      excludeAmbiguous: els.excludeAmbiguous.checked,
+      custom: els.customCharset.value
     };
-}
-
-// Update length display and strength
-lengthSlider.addEventListener('input', (e) => {
-    lengthValue.textContent = e.target.value;
-    if (getGenerationMode() === 'password') {
-        const strengthData = calculateStrengthFromSettings();
-        updateStrength(strengthData.strength);
-        updateStrengthDetails(strengthData);
-    }
-});
-
-// Get current generation mode
-function getGenerationMode() {
-    return document.querySelector('input[name="generationMode"]:checked').value;
-}
-
-// Generate passphrase
-function generatePassphrase() {
-    const wordCount = parseInt(wordCountSlider.value);
-    const words = [];
-    
-    for (let i = 0; i < wordCount; i++) {
-        const randomIndex = Math.floor(Math.random() * wordList.length);
-        words.push(wordList[randomIndex]);
-    }
-    
-    let passphrase = words.join('-');
-    
-    if (includeNumbers.checked) {
-        const randomNum = Math.floor(Math.random() * 1000);
-        passphrase += randomNum.toString();
-    }
-    
-    return passphrase;
-}
-
-// Get custom character set or build default
-function getCharacterSet() {
-    const custom = customCharset.value.trim();
-    if (custom.length > 0) {
-        return custom;
-    }
-    
-    let charset = '';
-    if (uppercaseCheckbox.checked) charset += uppercase;
-    if (lowercaseCheckbox.checked) charset += lowercase;
-    if (numbersCheckbox.checked) charset += numbers;
-    if (symbolsCheckbox.checked) charset += symbols;
-    
-    return charset;
-}
-
-// Generate single password
-function generateSinglePassword() {
-    const mode = getGenerationMode();
-    let password = '';
-    
-    if (mode === 'passphrase') {
-        password = generatePassphrase();
-    } else {
-        let charset = getCharacterSet();
-        
-        // Check if at least one option is selected or custom charset provided
-        if (charset.length === 0) {
-            return null;
-        }
-        
-        const length = parseInt(lengthSlider.value);
-        
-        // If custom charset, use it directly
-        if (customCharset.value.trim().length > 0) {
-            for (let i = 0; i < length; i++) {
-                const randomIndex = Math.floor(Math.random() * charset.length);
-                password += charset[randomIndex];
-            }
-        } else {
-            // Ensure at least one character from each selected category
-            const selectedCategories = [];
-            if (uppercaseCheckbox.checked) selectedCategories.push(uppercase);
-            if (lowercaseCheckbox.checked) selectedCategories.push(lowercase);
-            if (numbersCheckbox.checked) selectedCategories.push(numbers);
-            if (symbolsCheckbox.checked) selectedCategories.push(symbols);
-            
-            // Add one character from each selected category
-            selectedCategories.forEach(category => {
-                const randomIndex = Math.floor(Math.random() * category.length);
-                password += category[randomIndex];
-            });
-            
-            // Fill the rest randomly
-            for (let i = password.length; i < length; i++) {
-                const randomIndex = Math.floor(Math.random() * charset.length);
-                password += charset[randomIndex];
-            }
-            
-            // Shuffle the password to avoid predictable patterns
-            password = shuffleString(password);
-        }
-    }
-    
-    return password;
-}
-
-// Generate password function
-function generatePassword() {
-    const password = generateSinglePassword();
-    if (!password) {
-        passwordOutput.value = 'Please select at least one option or provide custom characters';
-        passwordOutput.style.color = '#ef4444';
-        updateStrength(0);
-        return;
-    }
-    
-    passwordOutput.value = password;
-    passwordOutput.style.color = '#222831';
-    if (document.documentElement.getAttribute('data-theme') === 'dark') {
-        passwordOutput.style.color = '#EEEEEE';
-    }
-    const strengthData = calculateStrength(password);
-    updateStrength(strengthData.strength);
-    updateStrengthDetails(strengthData);
-}
-
-// Shuffle string function (Fisher-Yates algorithm)
-function shuffleString(str) {
-    const arr = str.split('');
-    for (let i = arr.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [arr[i], arr[j]] = [arr[j], arr[i]];
-    }
-    return arr.join('');
-}
-
-// Calculate password strength from actual password
-function calculateStrength(password) {
-    let strength = 0;
-    let lengthScore = 0;
-    
-    // Length factor
-    if (password.length >= 16) {
-        strength += 3;
-        lengthScore = 3;
-    } else if (password.length >= 12) {
-        strength += 2;
-        lengthScore = 2;
-    } else if (password.length >= 8) {
-        strength += 1;
-        lengthScore = 1;
-    } else if (password.length >= 6) {
-        strength += 0.5;
-        lengthScore = 0.5;
-    }
-    
-    // Character variety
-    let hasUpper = /[A-Z]/.test(password);
-    let hasLower = /[a-z]/.test(password);
-    let hasNumber = /[0-9]/.test(password);
-    let hasSymbol = /[^A-Za-z0-9]/.test(password);
-    
-    let varietyCount = [hasUpper, hasLower, hasNumber, hasSymbol].filter(Boolean).length;
-    strength += varietyCount;
-    
-    // Calculate entropy
-    const charset = getCharacterSet();
-    const charsetSize = charset.length || (hasUpper ? 26 : 0) + (hasLower ? 26 : 0) + (hasNumber ? 10 : 0) + (hasSymbol ? 20 : 0);
-    const entropy = password.length * Math.log2(charsetSize || 1);
-    
-    // Character types string
-    const types = [];
-    if (hasUpper) types.push('Uppercase');
-    if (hasLower) types.push('Lowercase');
-    if (hasNumber) types.push('Numbers');
-    if (hasSymbol) types.push('Symbols');
-    
-    // Maximum strength is 7
+  }
+  function readPassphraseOptions() {
     return {
-        strength: Math.min(strength, 7),
-        lengthScore: lengthScore.toFixed(1),
-        varietyScore: varietyCount + '/4',
-        entropy: entropy.toFixed(2) + ' bits',
-        charTypes: types.length > 0 ? types.join(', ') : 'None'
+      wordCount: parseInt(els.wordCountSlider.value, 10),
+      includeNumber: els.includeNumbers.checked,
+      separator: '-'
     };
-}
+  }
 
-// Update strength indicator
-function updateStrength(strength) {
-    strengthFill.className = 'strength-fill';
-    strengthText.className = 'strength-text';
-    
-    if (strength <= 2.5) {
-        strengthFill.classList.add('weak');
-        strengthText.textContent = 'Weak';
-        strengthText.classList.add('weak');
-    } else if (strength <= 5) {
-        strengthFill.classList.add('medium');
-        strengthText.textContent = 'Medium';
-        strengthText.classList.add('medium');
+  // ---------- entropy / strength for the *current settings*, so the
+  // meter updates live as sliders/checkboxes move, before Generate
+  // is even clicked ----------
+  function currentEntropyBits() {
+    if (state.mode === 'passphrase') {
+      var pOpts = readPassphraseOptions();
+      return PasswordCore.passphraseEntropyBits(pOpts.wordCount, PasswordCore.WORD_LIST.length, pOpts.includeNumber);
+    }
+    var opts = readPasswordOptions();
+    var custom = opts.custom.trim();
+    var poolSize = custom.length > 0
+      ? new Set(opts.excludeAmbiguous ? PasswordCore.stripAmbiguous(custom) : custom).size
+      : PasswordCore.buildCharset(opts).length;
+    return PasswordCore.passwordEntropyBits(opts.length, poolSize);
+  }
+
+  function renderStrength(bits, charTypesLabel) {
+    var result = PasswordCore.classifyStrength(bits);
+    var labels = ['weak', 'medium', 'strong'];
+    var cls = labels[result.level];
+
+    els.strengthFill.className = 'strength-fill ' + cls;
+    els.strengthText.className = 'strength-text ' + cls;
+    els.strengthText.textContent = result.label;
+
+    els.entropyScore.textContent = bits.toFixed(1) + ' bits';
+    if (state.mode === 'passphrase') {
+      var pOpts = readPassphraseOptions();
+      els.lengthScore.textContent = pOpts.wordCount + ' words';
+      els.varietyScore.textContent = pOpts.includeNumber ? 'words + number' : 'words only';
     } else {
-        strengthFill.classList.add('strong');
-        strengthText.textContent = 'Strong';
-        strengthText.classList.add('strong');
+      var opts = readPasswordOptions();
+      els.lengthScore.textContent = opts.length + ' chars';
+      var count = [opts.upper, opts.lower, opts.digits, opts.symbols].filter(Boolean).length;
+      els.varietyScore.textContent = count + ' / 4 sets';
     }
-}
+    els.charTypes.textContent = charTypesLabel || '—';
+  }
 
-// Update strength details
-function updateStrengthDetails(strengthData) {
-    lengthScore.textContent = strengthData.lengthScore;
-    varietyScore.textContent = strengthData.varietyScore;
-    entropyScore.textContent = strengthData.entropy;
-    charTypes.textContent = strengthData.charTypes;
-}
+  // ---------- generation ----------
+  function generate() {
+    var value, charTypesLabel;
 
-// Copy to clipboard function
-async function copyToClipboard() {
-    const password = passwordOutput.value;
-    
-    if (!password || password === 'Please select at least one option') {
-        return;
+    if (state.mode === 'passphrase') {
+      value = PasswordCore.generatePassphrase(readPassphraseOptions());
+      charTypesLabel = 'lowercase words' + (readPassphraseOptions().includeNumber ? ' + number' : '');
+    } else {
+      var opts = readPasswordOptions();
+      value = PasswordCore.generatePassword(opts);
+      if (value) {
+        var types = PasswordCore.detectCharTypes(value);
+        charTypesLabel = Object.keys(types).filter(function (k) { return types[k]; }).join(', ') || 'none';
+      }
     }
-    
+
+    if (!value) {
+      els.passwordOutput.value = '';
+      els.passwordOutput.placeholder = 'select at least one character set';
+      renderStrength(0, '—');
+      return;
+    }
+
+    els.passwordOutput.value = value;
+    state.lastValue = value;
+    state.lastMeta = { mode: state.mode, generatedAt: new Date().toISOString() };
+
+    renderStrength(currentEntropyBits(), charTypesLabel);
+    addToHistory(value);
+  }
+
+  // ---------- live strength preview while adjusting controls ----------
+  function previewStrength() {
+    // Only touches the meter, never regenerates the value in the box.
+    var bits = currentEntropyBits();
+    var placeholderTypes = state.mode === 'passphrase'
+      ? 'lowercase words' + (readPassphraseOptions().includeNumber ? ' + number' : '')
+      : (function () {
+          var o = readPasswordOptions();
+          var picked = [];
+          if (o.upper) picked.push('upper');
+          if (o.lower) picked.push('lower');
+          if (o.digits) picked.push('digits');
+          if (o.symbols) picked.push('symbols');
+          return picked.join(', ') || 'none';
+        })();
+    renderStrength(bits, placeholderTypes);
+  }
+
+  [els.lengthSlider, els.uppercase, els.lowercase, els.numbers, els.symbols, els.excludeAmbiguous]
+    .forEach(function (el) { el.addEventListener('input', previewStrength); });
+  els.lengthSlider.addEventListener('input', function () { els.lengthValue.textContent = els.lengthSlider.value; });
+  els.wordCountSlider.addEventListener('input', function () {
+    els.wordCountValue.textContent = els.wordCountSlider.value;
+    previewStrength();
+  });
+  els.includeNumbers.addEventListener('input', previewStrength);
+  els.customCharset.addEventListener('input', previewStrength);
+
+  // ---------- strength details toggle ----------
+  els.toggleDetailsBtn.addEventListener('click', function () {
+    var open = els.strengthDetails.hidden;
+    els.strengthDetails.hidden = !open;
+    els.toggleDetailsBtn.textContent = open ? 'hide details' : 'show details';
+    els.toggleDetailsBtn.setAttribute('aria-expanded', String(open));
+  });
+
+  // ---------- copy ----------
+  async function copyToClipboard() {
+    if (!state.lastValue) return;
     try {
-        await navigator.clipboard.writeText(password);
-        copyBtn.classList.add('copied');
-        
-        setTimeout(() => {
-            copyBtn.classList.remove('copied');
-        }, 2000);
+      await navigator.clipboard.writeText(state.lastValue);
     } catch (err) {
-        // Fallback for older browsers
-        passwordOutput.select();
-        document.execCommand('copy');
-        copyBtn.classList.add('copied');
-        setTimeout(() => {
-            copyBtn.classList.remove('copied');
-        }, 2000);
+      els.passwordOutput.select();
+      document.execCommand('copy');
     }
-}
+    els.copyBtn.classList.add('copied');
+    setTimeout(function () { els.copyBtn.classList.remove('copied'); }, 1500);
+  }
 
-// Event listeners
-generateBtn.addEventListener('click', generatePassword);
-copyBtn.addEventListener('click', copyToClipboard);
+  // ---------- export ----------
+  function download(filename, content, type) {
+    var blob = new Blob([content], { type: type });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 
-// Update strength when checkboxes change
-[uppercaseCheckbox, lowercaseCheckbox, numbersCheckbox, symbolsCheckbox].forEach(checkbox => {
-    checkbox.addEventListener('change', () => {
-        const strength = calculateStrengthFromSettings();
-        updateStrength(strength);
-    });
-});
-
-// Generate password on page load
-generatePassword();
-
-// Initialize strength on page load
-const initialStrength = calculateStrengthFromSettings();
-updateStrength(initialStrength);
-
-// Export functions
-function exportToJSON() {
-    const password = passwordOutput.value;
-    if (!password || password === 'Please select at least one option' || password.includes('Please select')) {
-        return;
-    }
-    
-    const data = {
-        password: password,
-        length: password.length,
-        mode: getGenerationMode(),
-        timestamp: new Date().toISOString(),
-        strength: {
-            rating: strengthText.textContent,
-            entropy: entropyScore.textContent,
-            characterTypes: charTypes.textContent
-        }
+  function exportJSON() {
+    if (!state.lastValue) return;
+    var data = {
+      value: state.lastValue,
+      mode: state.lastMeta.mode,
+      length: state.lastValue.length,
+      strength: els.strengthText.textContent,
+      entropyBits: els.entropyScore.textContent,
+      generatedAt: state.lastMeta.generatedAt
     };
-    
-    const json = JSON.stringify(data, null, 2);
-    const blob = new Blob([json], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `password-${Date.now()}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-}
+    download('password-' + Date.now() + '.json', JSON.stringify(data, null, 2), 'application/json');
+  }
 
-function exportToCSV() {
-    const password = passwordOutput.value;
-    if (!password || password === 'Please select at least one option' || password.includes('Please select')) {
-        return;
+  function exportCSV() {
+    if (!state.lastValue) return;
+    var rows = [
+      ['value', 'mode', 'length', 'strength', 'entropy_bits', 'generated_at'],
+      [state.lastValue, state.lastMeta.mode, state.lastValue.length, els.strengthText.textContent, els.entropyScore.textContent, state.lastMeta.generatedAt]
+    ];
+    var csv = rows.map(function (r) { return r.map(function (c) { return '"' + String(c).replace(/"/g, '""') + '"'; }).join(','); }).join('\n');
+    download('password-' + Date.now() + '.csv', csv, 'text/csv');
+  }
+
+  // ---------- session history ----------
+  function addToHistory(value) {
+    state.history.unshift({ value: value, mode: state.mode, at: Date.now() });
+    state.history = state.history.slice(0, 8);
+    renderHistory();
+  }
+
+  function renderHistory() {
+    els.historyList.innerHTML = '';
+    if (state.history.length === 0) {
+      var empty = document.createElement('li');
+      empty.className = 'history-empty';
+      empty.textContent = 'nothing generated yet';
+      els.historyList.appendChild(empty);
+      return;
     }
-    
-    const csv = [
-        ['Password', 'Length', 'Mode', 'Strength', 'Entropy', 'Character Types', 'Timestamp'],
-        [
-            password,
-            password.length,
-            getGenerationMode(),
-            strengthText.textContent,
-            entropyScore.textContent,
-            charTypes.textContent,
-            new Date().toISOString()
-        ]
-    ].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
-    
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `password-${Date.now()}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-}
-
-// Mode toggle handler
-modeRadios.forEach(radio => {
-    radio.addEventListener('change', (e) => {
-        const span = generateBtn ? generateBtn.querySelector('span') : null;
-        if (e.target.value === 'passphrase') {
-            passphraseControls.style.display = 'block';
-            passwordOptions.style.display = 'none';
-            customCharsetGroup.style.display = 'none';
-            if (span) {
-                span.textContent = 'Generate Passphrase';
-            }
-        } else {
-            passphraseControls.style.display = 'none';
-            passwordOptions.style.display = 'block';
-            customCharsetGroup.style.display = 'block';
-            if (span) {
-                span.textContent = 'Generate Password';
-            }
-        }
-        generatePassword();
+    state.history.forEach(function (entry) {
+      var li = document.createElement('li');
+      var span = document.createElement('span');
+      span.textContent = entry.value;
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = 'copy';
+      btn.addEventListener('click', function () {
+        navigator.clipboard.writeText(entry.value).catch(function () {});
+      });
+      li.appendChild(span);
+      li.appendChild(btn);
+      els.historyList.appendChild(li);
     });
-});
+  }
 
-// Word count slider
-wordCountSlider.addEventListener('input', (e) => {
-    wordCountValue.textContent = e.target.value;
-    if (getGenerationMode() === 'passphrase') {
-        generatePassword();
+  els.clearHistoryBtn.addEventListener('click', function () {
+    state.history = [];
+    renderHistory();
+  });
+
+  // ---------- wire up generate / copy / export ----------
+  els.generateBtn.addEventListener('click', generate);
+  els.copyBtn.addEventListener('click', copyToClipboard);
+  els.exportJsonBtn.addEventListener('click', exportJSON);
+  els.exportCsvBtn.addEventListener('click', exportCSV);
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && document.activeElement !== els.customCharset) {
+      generate();
     }
-});
+  });
 
-// Custom charset toggle
-customCharset.addEventListener('input', () => {
-    if (customCharset.value.trim().length > 0) {
-        passwordOptions.style.display = 'none';
-    } else {
-        passwordOptions.style.display = 'block';
-    }
-});
-
-// Toggle strength details
-let detailsVisible = false;
-toggleDetailsBtn.addEventListener('click', () => {
-    detailsVisible = !detailsVisible;
-    if (detailsVisible) {
-        strengthDetails.style.display = 'block';
-        toggleDetailsBtn.querySelector('span').textContent = 'Hide Details';
-        toggleDetailsBtn.classList.add('active');
-    } else {
-        strengthDetails.style.display = 'none';
-        toggleDetailsBtn.querySelector('span').textContent = 'Show Details';
-        toggleDetailsBtn.classList.remove('active');
-    }
-});
-
-
-// Event listeners
-generateBtn.addEventListener('click', generatePassword);
-copyBtn.addEventListener('click', copyToClipboard);
-exportJsonBtn.addEventListener('click', exportToJSON);
-exportCsvBtn.addEventListener('click', exportToCSV);
-
-// Update strength when checkboxes change
-[uppercaseCheckbox, lowercaseCheckbox, numbersCheckbox, symbolsCheckbox].forEach(checkbox => {
-    checkbox.addEventListener('change', () => {
-        if (getGenerationMode() === 'password') {
-            const strengthData = calculateStrengthFromSettings();
-            updateStrength(strengthData.strength);
-            updateStrengthDetails(strengthData);
-        }
-    });
-});
-
-// Initialize custom charset group visibility
-if (customCharset && customCharset.value.trim().length > 0) {
-    passwordOptions.style.display = 'none';
-}
-
-
-// Generate password on page load
-generatePassword();
-
-// Initialize strength on page load
-const initialStrengthData = calculateStrengthFromSettings();
-updateStrength(initialStrengthData.strength);
-updateStrengthDetails(initialStrengthData);
-
-// Allow Enter key to generate password
-document.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && document.activeElement !== passwordOutput) {
-        generatePassword();
-    }
-});
-
+  // ---------- boot ----------
+  renderHistory();
+  generate();
+})();
