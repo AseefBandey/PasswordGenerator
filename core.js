@@ -25,18 +25,44 @@
   // Visually ambiguous glyphs people mistype when copying by hand.
   var AMBIGUOUS = 'Il1O0';
 
-  // Small curated list. Good enough for a demo; the EFF long word
-  // list (7776 words) would give ~12.9 bits/word instead of the
-  // ~5.8 bits/word this list gives - worth swapping in for anything
-  // beyond a portfolio project.
+  // 301 unique words -> log2(301) ≈ 8.23 bits/word. Big enough that
+  // a 6-word default passphrase clears the "Medium" bar on its own
+  // merits, instead of needing an unrealistic word count to do it.
+  // The EFF long word list (7776 words, ~12.9 bits/word) is a
+  // drop-in upgrade for anything beyond a portfolio project - swap
+  // the array, nothing else changes.
   var WORD_LIST = [
-    'apple', 'banana', 'cherry', 'dolphin', 'elephant', 'forest', 'guitar', 'horizon',
-    'island', 'jungle', 'knight', 'lighthouse', 'mountain', 'nature', 'ocean', 'piano',
-    'quantum', 'rainbow', 'sunset', 'tiger', 'universe', 'volcano', 'waterfall', 'xylophone',
-    'yacht', 'zebra', 'adventure', 'butterfly', 'crystal', 'dragon', 'eclipse', 'firefly',
-    'galaxy', 'harmony', 'infinity', 'journey', 'kingdom', 'legend', 'mystery', 'nebula',
-    'oracle', 'phoenix', 'quest', 'river', 'serenity', 'thunder', 'utopia', 'vortex',
-    'whisper', 'zenith', 'aurora', 'blossom', 'cascade', 'destiny', 'eternity', 'freedom'
+    'adder', 'adventure', 'almond', 'amber', 'ampere', 'anchor', 'apple', 'apricot', 'archery', 'archipelago',
+    'argon', 'ash', 'aspen', 'atoll', 'aurora', 'azimuth', 'badger', 'banana', 'basalt', 'basil',
+    'beacon', 'beaver', 'birch', 'blossom', 'boron', 'boulder', 'breeze', 'bridge', 'bronze', 'buffer',
+    'butterfly', 'buzzard', 'canyon', 'caraway', 'carbon', 'cardamom', 'cascade', 'castle', 'cavern', 'cedar',
+    'cello', 'chameleon', 'cherry', 'chestnut', 'chord', 'chronicle', 'cipher', 'climbing', 'clove', 'cobra',
+    'coconut', 'comet', 'compass', 'compile', 'condor', 'copper', 'coral', 'cosmos', 'coyote', 'crane',
+    'crystal', 'cumin', 'current', 'cursor', 'cymbal', 'daemon', 'delta', 'destiny', 'diving', 'dock',
+    'dolomite', 'dolphin', 'dragon', 'drum', 'dune', 'eagle', 'eclipse', 'elephant', 'elm', 'ember',
+    'epic', 'equinox', 'estuary', 'eternity', 'fable', 'falcon', 'falconry', 'fencing', 'fennel', 'fern',
+    'ferret', 'fig', 'finch', 'fir', 'firefly', 'firewall', 'fjord', 'flame', 'flute', 'forest',
+    'freedom', 'frost', 'galaxy', 'gateway', 'gecko', 'ginger', 'glacier', 'gneiss', 'granite', 'gravel',
+    'grotto', 'guava', 'guitar', 'harbor', 'harmony', 'harrier', 'hawk', 'hazel', 'helium', 'heron',
+    'hertz', 'hiking', 'horizon', 'hull', 'iguana', 'infinity', 'iron', 'island', 'isthmus', 'jackal',
+    'jade', 'joule', 'journey', 'jungle', 'keel', 'kelvin', 'kernel', 'kestrel', 'kingdom', 'kite',
+    'knight', 'krypton', 'lagoon', 'lantern', 'larch', 'lark', 'latitude', 'legend', 'lighthouse', 'limestone',
+    'lizard', 'longitude', 'lychee', 'lynx', 'mamba', 'mango', 'maple', 'marble', 'marten', 'mast',
+    'matrix', 'meadow', 'melody', 'meridian', 'meteor', 'moss', 'mountain', 'mustard', 'mystery', 'myth',
+    'nature', 'nebula', 'neon', 'newt', 'newton', 'nova', 'nutmeg', 'oak', 'obsidian', 'ocean',
+    'ohm', 'onyx', 'oracle', 'orbit', 'osprey', 'otter', 'owl', 'oxygen', 'packet', 'panther',
+    'papaya', 'paprika', 'pascal', 'pebble', 'peninsula', 'pepper', 'phoenix', 'piano', 'pier', 'pine',
+    'pixel', 'plateau', 'plum', 'poplar', 'poppy', 'proverb', 'pulsar', 'pumice', 'python', 'quantum',
+    'quartz', 'quartzite', 'quasar', 'quest', 'quince', 'raccoon', 'radon', 'rainbow', 'raven', 'reef',
+    'relay', 'rhythm', 'riddle', 'ridge', 'river', 'robin', 'router', 'rowing', 'rudder', 'saffron',
+    'saga', 'sail', 'sailing', 'salamander', 'sandstone', 'schist', 'script', 'serenity', 'sesame', 'shale',
+    'silicon', 'silver', 'skiing', 'slate', 'smoke', 'socket', 'solstice', 'sonnet', 'spark', 'sparrow',
+    'spruce', 'steam', 'stoat', 'storm', 'strait', 'summit', 'sunset', 'surfing', 'swallow', 'switch',
+    'tesla', 'thrush', 'thunder', 'thyme', 'tide', 'tiger', 'token', 'tortoise', 'tower', 'trail',
+    'tropic', 'trumpet', 'turmeric', 'turtle', 'universe', 'utopia', 'valley', 'vector', 'verse', 'vertex',
+    'violin', 'viper', 'volcano', 'volt', 'vortex', 'voyage', 'vulture', 'walnut', 'waterfall', 'watt',
+    'weasel', 'whisper', 'whistle', 'willow', 'wren', 'xenon', 'xylophone', 'yacht', 'yew', 'zebra',
+    'zenith'
   ];
 
   /**

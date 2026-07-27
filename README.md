@@ -64,8 +64,15 @@ close the tab.
 
 ## Word list
 
-The passphrase word list is a small curated set (~56 words, ~5.8 bits per
-word). For anything beyond a demo, swap in the
+The passphrase word list is a curated set of 301 words (~8.2 bits/word).
+An earlier draft shipped with only 56 words, which meant even the
+maximum 10-word passphrase capped out around 58 bits — never enough to
+clear the "Strong" threshold, and the default 4-word passphrase was
+always "Weak" regardless of the other settings. With 301 words the
+slider (3–12 words, default 6) now spans the full Weak → Medium → Strong
+range the way the password side already did.
+
+For anything beyond a demo, swap in the
 [EFF long word list](https://www.eff.org/dice) (7,776 words, ~12.9
 bits/word) — `generatePassphrase` in `core.js` just indexes into
 `WORD_LIST`, so it's a one-array swap.
